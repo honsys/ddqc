@@ -138,6 +138,10 @@ def shasum512list(filelist, logfilename=None, verbose=False):
 #end shasum512list
 
 if __name__ == "__main__":
+  redmine = 'https://redmine.biotech.ufl.edu/projects/day-to-day/wiki/How_to_Perform_Data_Delivery_QC'
+  writelog('Feel free to review this ICBR Redmine Wiki page, which describes how to reset the USB PIN and perform the QC: ')
+  writelog(redmine)
+  writelog('This script attempts to step through the QC with a bit of user interaction ...')
   cwd = workspace()
   items = [] ; zero_items = []
   cnt = dir_content(cwd, items, zero_items)
