@@ -59,16 +59,16 @@ def workspace():
       if( p.fstype == 'ntfs' ):
         writelog('Ok found NTFS partition, proceeding with QC of: '+cwd)
         return cwd
-
+      #endif
+    #endif
+  #endfor
   writelog('Oops, this is note a USB volume with NTFS? '+cwd)
-  return None
+  sys.exit()
 #end workspace
 
 def dir_content(dir):
   items = [os.path.join(dir, f) for f in os.listdir(dir)]
-  for i in items:
-    print(i)
-#end lsdir
+# for i in items: print(i)
   return items
 
 if __name__ == "__main__":
