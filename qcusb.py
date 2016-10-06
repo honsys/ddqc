@@ -193,7 +193,7 @@ def shasum_check(file, ok_checks, notok_checks):
   #endtry
   elapsed = timeit.default_timer() - start_time
   okcnt = len(ok_checks) ; notcnt = len(notok_checks)
-  writelog('Shasum check Ok cnt: ' + repr(okcnt) + ' ... Not Ok cnt: ' + repr(len(notcnt)))
+  writelog('Shasum check Ok cnt: ' + repr(okcnt) + ' ... Not Ok cnt: ' + repr(notcnt))
   return elapsed
 #end shasum_check
 
