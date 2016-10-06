@@ -192,8 +192,9 @@ def shasum_check(file, ok_checks, notok_checks):
     writelog('pexpect EOF from: ' + checkdmc)
   #endtry
   elapsed = timeit.default_timer() - start_time
-  writelog('Elapsed time: ' + repr(elapsed))
-  return len(ok_checks)
+  okcnt = len(ok_checks) ; notcnt = len(notok_checks)
+  writelog('Shasum check Ok cnt: ' + repr(okcnt) + ' ... Not Ok cnt: ' + repr(len(notcnt)))
+  return elapsed
 #end shasum_check
 
 def main(verbose=True):
@@ -225,9 +226,12 @@ def main(verbose=True):
     sys.exit()
   #endif
   # shas = shasum512list(items) ; writelog(shas)
-  okcnt = 0 ; ok_checks = [] ; notok_checks = []
-  if(sha512file_cnt > 0 ): okcnt = shasum_check(_sha512file[0], ok_checks, notok_checks)
-  writelog('Shasum check Ok cnt: ' + repr(okcnt) + ' ... Not Ok cnt: ' + repr(len(notok_checks)))
+  elapsed = 0 ; okcnt = 0 ; ok_checks = [] ; notok_checks = []
+  if(sha512file_cnt > 0 ):
+    writelog('Ok proceeding with check cmd shasum -c using: ' + _sha512file[0])
+    elapsed = shasum_check(_sha512file[0], ok_checks, notok_checks)
+  #endif
+  writelog('Elapsed time: ' + repr(elapsed))
 
 if __name__ == "__main__":
   main()
