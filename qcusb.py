@@ -3,7 +3,7 @@
 from __future__ import print_function
 
 import datetime, getpass, hashlib, inspect, json, os
-import pexpect, psutil, re, scandir, ssl, string, sys
+import pexpect, psutil, re, scandir, ssl, string, sys, timeit
 if(sys.version_info.major < 3):
   import six # allows python3 syntax in python2
 
@@ -173,6 +173,7 @@ def shasum512list(filelist, logfilename=None, verbose=False):
 def shasum_check(file, ok_checks, notok_checks):
  # checkcmd = 'shasum -a 512 -c ' + file + ' | tee ' + _log
   checkcmd = 'shasum -a 512 -c ' + file
+  start_time = timeit.default_timer()
   try:
     child = pexpect.spawn(checkcmd)
 #    child.setlog(_log)
@@ -190,6 +191,8 @@ def shasum_check(file, ok_checks, notok_checks):
   except pexpect.EOF:
     writelog('pexpect EOF from: ' + checkdmc)
   #endtry
+  elapsed = timeit.default_timer() - start_time
+  writelog('Elapsed time: ' + repr(elapsed))
   return len(ok_checks)
 #end shasum_check
 
