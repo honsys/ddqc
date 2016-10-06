@@ -9,6 +9,8 @@ if(sys.version_info.major < 3):
 
 # in the event we need to perform ssl transactions without published certificates:
 ssl._create_default_https_context = ssl._create_unverified_context
+
+_sha512file = []
 _log = None
 _verbose = False
 _usr = getpass.getuser()
@@ -32,12 +34,34 @@ def qclog(qctmp = '/var/tmp/' + _usr + '/QC'):
   return _log
 #end qclog
 
-def writelog(items):
+def writelog(info):
+  """
+  write one or more info-objects to stdout and to log-file
+  """
   global _log
   if( not _log ): _log = qclog()
-  json.dump(items, _log)
-#  for i in items: _log.write(i+'\n')
-  print(items)
+
+  if( isinstance(info, dict) ):
+    print(info) ; json.dump(info, _log, sort_keys=True, indent=2)
+    return
+
+  if( isinstance(info, basestring) ):
+    print(info) ; print(info, file=_log)
+    return
+
+  # if not a dict or sring, try an iterator
+  try:
+    it = iter(info)
+    while( True ):
+      val = it.next()
+      print(repr(val)) ; print(repr(val), file=_log)
+  except:
+    return
+
+  # assume its some sorta simple scalar, but play it safe with repr
+  print(repr(info)) ; print(repr(info), file=_log)
+  return
+#end writelog
 
 def yesno(text=''):
   """
@@ -58,12 +82,11 @@ def workspace():
   print('Current working directoy is:', cwd)
   resp = yesno('Is this the root of the USB volume?')
   if( resp == 'n' ):
-    writelog(['Please cd or pushd to the root of the USB volume and restart this script ...'])
+    writelog('Please cd or pushd to the root of the USB volume and restart this script ...')
 #   return cwd # test here regardless ...
     sys.exit()
   #endif
 
-  cwdpart = None
   parts = psutil.disk_partitions()
   for p in parts:
     if( p.mountpoint == cwd ):
@@ -73,8 +96,15 @@ def workspace():
       #endif
     #endif
   #endfor
-  writelog('Oops, this is note a USB volume with NTFS? '+cwd)
-  sys.exit()
+  writelog('Oops, this is not a USB volume with NTFS? '+cwd)
+  resp = yesno('Proceed with QC on this non NTFS volme?')
+  if( resp == 'n' ):
+    writelog('Ok abort QC ...')
+    sys.exit()
+  else:
+    writelog('Ok proceeding with QC ...')
+
+  return cwd
 #end workspace
 
 def dir_content(dir, items, zero_items):
@@ -82,10 +112,12 @@ def dir_content(dir, items, zero_items):
   find all files in all sub-dirs and set list of full paths.
   also check for zero content files and note those in their own list
   """
+  global _sha512file
   for item in scandir.scandir(dir):
     if(item.is_dir()): dir_content(item.path, items, zero_items)
     if(not item.is_file()): continue
     items.append(item.path)
+    if(item.path.endswith('.sha512')): _sha512file.append(item.path)
     try:
       sz = os.path.getsize(item.path)
       if(sz <= 0): zero_items.append(item.path)
@@ -95,7 +127,8 @@ def dir_content(dir, items, zero_items):
     #endtry
   #endfor
 
-  return len(items)
+  #writelog('Total number of files found: '+repr(len(items)))
+  return len(_sha512file)
 #end dir_content
 
 def shasum512(filename):
@@ -137,24 +170,33 @@ def shasum512list(filelist, logfilename=None, verbose=False):
   return shasums
 #end shasum512list
 
-if __name__ == "__main__":
+def main(verbose=True):
+  global _verbose
+  _verbose = verbose
   redmine = 'https://redmine.biotech.ufl.edu/projects/day-to-day/wiki/How_to_Perform_Data_Delivery_QC'
   writelog('Feel free to review this ICBR Redmine Wiki page, which describes how to reset the USB PIN and perform the QC: ')
   writelog(redmine)
   writelog('This script attempts to step through the QC with a bit of user interaction ...')
   cwd = workspace()
   items = [] ; zero_items = []
-  cnt = dir_content(cwd, items, zero_items)
+  sha512file_cnt = dir_content(cwd, items, zero_items)
   cnt0 = len(zero_items)
   if(cnt0 > 0 ):
     for f0 in zero_items: writelog('zero content file: '+f0)
-    resp = yesno('found some 0 content files ... should shasum check proceed?')
+    resp = yesno('Found some '+repr(cnt0)+' zero content files ... should shasum check proceed?')
     if(resp == 'n'):
-      writelog('abort QC due to presence of 0 content file count: '+cnt0)
+      writelog('Abort QC due to presence of 0 content file count: '+repr(cnt0))
       sys.exit()
     else:
-      writelog('continuing QC despite 0 content file count: '+cnt0)
+      writelog('Continuing QC despite 0 content file count: '+repr(cnt0))
   #if cnt0
-# writelog(items)
+  resp = yesno('Found sha512 list file(s): ' + repr(sha512file_cnt) + ' ... ' + repr(_sha512file) + ' ... proceed?')
+  if(resp == 'n'):
+    writelog('Abort QC due to incorrect sha512 list file: '+repr(sha512file))
+    sys.exit()
+  #endif
   shas = shasum512list(items)
-  print(shas)
+  writelog(shas)
+
+if __name__ == "__main__":
+  main()
