@@ -171,11 +171,11 @@ def shasum512list(filelist, logfilename=None, verbose=False):
 #end shasum512list
 
 def shasum_check(file, ok_checks, notok_checks):
- """
- invokes MACOS CLI: shasum -a 512 -c filename
- the text file should contain a list of shasum results and filenames
- tbd: check if linux provides the same CLI ...
- """
+  """
+  invokes MACOS CLI: shasum -a 512 -c filename
+  the text file should contain a list of shasum results and filenames
+  tbd: check if linux provides the same CLI ...
+  """
   checkcmd = 'shasum -a 512 -c ' + file
   start_time = timeit.default_timer()
   try:
@@ -238,4 +238,4 @@ def main(verbose=True):
   writelog('Elapsed time: ' + repr(elapsed))
 
 if __name__ == "__main__":
-  main(*sys.argv[1:]))
+  main(*sys.argv[1:])
