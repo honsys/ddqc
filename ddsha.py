@@ -1,18 +1,14 @@
 #!/usr/bin/env python
-"""
-qcmac is meant for a MAC OS QC of a data delivery with shasum 512 checksums.
-This uses pexpect to spawn a child process of the shasum app., which should be in the user's PATH.
-The shasum app. CLI invokation options are: 'shasum -a 512 -c checksum_summary_file.sha512'.
-"""
-# more detailed discussion/decription of this module is appended to its docstring
-# at the bottome of this file ...
 
 from __future__ import print_function
 
 import datetime, getpass, hashlib, inspect, json, os
-import pexpect, psutil, re, scandir, string, sys, timeit
+import pexpect, psutil, re, scandir, ssl, string, sys, timeit
 if(sys.version_info.major < 3):
   import six # allows python3 syntax in python2
+
+# in the event we need to perform ssl transactions without published certificates:
+ssl._create_default_https_context = ssl._create_unverified_context
 
 _sha512file = []
 _log = None
@@ -21,7 +17,7 @@ _usr = getpass.getuser()
 
 def qclog(qctmp = '/var/tmp/' + _usr + '/QC'):
   """
-  Open unique logfile for this QC.
+  open unique logfile for this QC.
   """
   global _log, _usr
   logdir = qctmp + '/log'
@@ -31,7 +27,6 @@ def qclog(qctmp = '/var/tmp/' + _usr + '/QC'):
     # os.mknod(logfile)
     if(not os.path.exists(logdir)): os.makedirs(logdir)
     _log = open(logfile, 'a')
-    print('opened logfile: ', logfile, ' ... proceeding with QC ....')
   except:
     print('failed to open logfile: ', logfile, ' ... abort ....')
     sys.exit()
@@ -41,7 +36,7 @@ def qclog(qctmp = '/var/tmp/' + _usr + '/QC'):
 
 def writelog(info):
   """
-  Write one or more info-objects to stdout and to log-file
+  write one or more info-objects to stdout and to log-file
   """
   global _log
   if( not _log ): _log = qclog()
@@ -70,7 +65,7 @@ def writelog(info):
 
 def yesno(text=''):
   """
-  Prompt user for yes/no response, with the default response (user just hits enter) in no.
+  prompt user for yes/no response, with the default response (user just hits enter) in no.
   """
   resp = getpass.getpass('qcUCB> '+text+' [y/n]: ')
   if( resp != 'y' ):
@@ -81,7 +76,7 @@ def yesno(text=''):
 
 def workspace():
   """
-  Check current working directory is USB volume and mounted as NTFS.
+  check current working directory is USB volume and mounted as NTFS.
   """
   cwd = os.getcwd()
   print('Current working directoy is:', cwd)
@@ -114,11 +109,11 @@ def workspace():
 
 def dir_content(dir, items, zero_items):
   """
-  Find all files in all sub-dirs and set list of full paths.
-  Also check for zero content files and note those in their own list
+  find all files in all sub-dirs and set list of full paths.
+  also check for zero content files and note those in their own list
   """
-  global _sha512file # list of '*.sha512'
-  for item in scandir.scandir(dir): files found
+  global _sha512file
+  for item in scandir.scandir(dir):
     if(item.is_dir()): dir_content(item.path, items, zero_items)
     if(not item.is_file()): continue
     items.append(item.path)
@@ -133,14 +128,53 @@ def dir_content(dir, items, zero_items):
   #endfor
 
   #writelog('Total number of files found: '+repr(len(items)))
-  return _sha512file
+  return len(_sha512file)
 #end dir_content
+
+def shasum512(filename):
+  """
+  read file into buffer and eval sha512
+  log result in the same format as shasum -a 512 to be double-checked via shasum -c
+  note sym-links may point to non-existant filesystem item
+  """
+  global _verbose
+  if(_verbose): print(filename)
+
+  filesha = { filename : None }
+  try:
+    f = open(filename, 'rb') ; s = hashlib.sha512()
+    # for really large files may need multiple read-n-update
+    buff = f.read() ; s.update(buff) ; shasum = s.hexdigest()
+    filesha = { filename : shasum }
+    if(_verbose): print(shasum + '  ' + flename)
+  except OSError as err:
+    print("OS error: {0}".format(err))
+  except:
+    if(_verbose): print("non OS error:", sys.exc_info()[0]) ; pass
+  #endtry
+  return filesha
+#end shasum512
+
+def shasum512list(filelist, logfilename=None, verbose=False):
+  """
+  evaluate and log sha512 checksums of a list of files, populate and return
+  a list of non-None { filename : shasum } hash-dicts.
+  """
+  global _verbose
+  shasums = {}
+  for filename in filelist:
+    filesha = shasum512(filename) # return a single key-val dict
+    if(_verbose): print('shasum512list> ', filesha)
+    if(filesha[filename]): shasums.update(filesha)
+  #endfor
+  return shasums
+#end shasum512list
 
 def shasum_check(file, ok_checks, notok_checks):
   """
-  Invokes MACOS CLI: shasum -a 512 -c filename
-  The text file should contain a list of shasum results and filenames
-  TBD: check if Linux provides the same CLI ...
+  invokes MACOS CLI: shasum -a 512 -c filename
+  the text file should contain a list of shasum results and filenames
+  tbd: check if linux provides the same CLI ...
   """
   checkcmd = 'shasum -a 512 -c ' + file
   start_time = timeit.default_timer()
@@ -169,7 +203,7 @@ def shasum_check(file, ok_checks, notok_checks):
 
 def main(verbose=True):
   """
-  Main entry func. for 'qcmac'
+  main entry func.
   """
   global _verbose
   _verbose = verbose
@@ -179,8 +213,7 @@ def main(verbose=True):
   writelog('This script attempts to step through the QC with a bit of user interaction ...')
   cwd = workspace()
   items = [] ; zero_items = []
-  sha512file_list = dir_content(cwd, items, zero_items)
-  sha512file_cnt = len(sha512file_list)
+  sha512file_cnt = dir_content(cwd, items, zero_items)
   cnt0 = len(zero_items)
   if(cnt0 > 0 ):
     for f0 in zero_items: writelog('zero content file: '+f0)
@@ -206,14 +239,3 @@ def main(verbose=True):
 
 if __name__ == "__main__":
   main(*sys.argv[1:])
-
-__doc__ += """
-This scripts relies on the user responing to prompts with yes/no (y/n).
-Note the assumption of a sha512 filename convention -- '*.sha512'.
-If more than 1 such file is found, the user should be prompted for instructions.
-If no such file is found, a more elaborate version of this script called ddsha.py
-can be used to perform the initial shasum and create the summary file.
-
-Although this is called qcmac because it's meant to be used on a MAC OS system,
-it should work on Linux too.
-"""

@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-qcmac is meant for a MAC OS QC of a data delivery with shasum 512 checksums.
+qcsha is meant for a QC of a data delivery with shasum 512 checksums.
 This uses pexpect to spawn a child process of the shasum app., which should be in the user's PATH.
 The shasum app. CLI invokation options are: 'shasum -a 512 -c checksum_summary_file.sha512'.
 """
@@ -138,9 +138,9 @@ def dir_content(dir, items, zero_items):
 
 def shasum_check(file, ok_checks, notok_checks):
   """
-  Invokes MACOS CLI: shasum -a 512 -c filename
+  Invokes CLI: shasum -a 512 -c filename
   The text file should contain a list of shasum results and filenames
-  TBD: check if Linux provides the same CLI ...
+  Assumes MAC OS and Linux provide the same CLI ...
   """
   checkcmd = 'shasum -a 512 -c ' + file
   start_time = timeit.default_timer()
