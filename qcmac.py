@@ -118,7 +118,7 @@ def dir_content(dir, items, zero_items):
   Also check for zero content files and note those in their own list
   """
   global _sha512file # list of '*.sha512'
-  for item in scandir.scandir(dir): files found
+  for item in scandir.scandir(dir): 
     if(item.is_dir()): dir_content(item.path, items, zero_items)
     if(not item.is_file()): continue
     items.append(item.path)
