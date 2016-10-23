@@ -1,6 +1,6 @@
 #!/bin/bash
 echo 'using lsblk, df, fdisk, and hdparm to provide disk and filt-system info'
-echo 'remember, fdisk and hdparm need root ...'
+echo 'remember, fdisk and hdparm need root/sudo priv. ...'
 lsblk
 echo ----------------------------------------------
 df -hT
